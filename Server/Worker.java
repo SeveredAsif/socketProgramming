@@ -1,5 +1,8 @@
 package Server;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.File;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -9,10 +12,46 @@ import java.util.HashMap;
 public class Worker extends Thread {
     Socket socket;
     HashMap<String, Integer> userMap;
+    DataInputStream dataInputStream;
+    DataOutputStream dataOutputStream;
+
+    // private static DataOutputStream dataOutputStream = null;
+    // private static DataInputStream dataInputStream = null;
 
     public Worker(Socket socket, HashMap<String, Integer> userMap) {
         this.socket = socket;
         this.userMap = userMap;
+        try {
+            dataInputStream = new DataInputStream(
+                    this.socket.getInputStream());
+            dataOutputStream = new DataOutputStream(
+                    this.socket.getOutputStream());
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+
+    }
+
+    public void receiveFile(String fileName, int chunksize)
+            throws Exception {
+        int bytes = 0;
+        FileOutputStream fileOutputStream = new FileOutputStream("xxxxx.txt");
+        System.out.println("here reached");
+        long size = this.dataInputStream.readLong(); // read file size
+        System.out.println("file size: " + size);
+        byte[] buffer = new byte[chunksize];
+        while (size > 0
+                && (bytes = dataInputStream.read(
+                        buffer, 0,
+                        (int) Math.min(buffer.length, size))) != -1) {
+            // Here we write the file using write method
+            fileOutputStream.write(buffer, 0, bytes);
+            size -= bytes; // read upto file size
+            System.out.println("bytes: " + bytes);
+        }
+        // Here we received file
+        System.out.println("File is Received");
+        fileOutputStream.close();
     }
 
     public void run() {
@@ -93,10 +132,13 @@ public class Worker extends Thread {
                     for (String part : p) {
                         System.out.println(part + " :in server");
                     }
-                    serverResponse = "your file has been uploaded!";
+                    serverResponse = "4096"; // have to replace it using a random number
                     out.writeObject(serverResponse);
+                    receiveFile(p[0], 4096);
                 }
             }
+            this.dataInputStream.close();
+            this.dataOutputStream.close();
 
         } catch (Exception e) {
             e.printStackTrace();
