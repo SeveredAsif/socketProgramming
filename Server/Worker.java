@@ -33,7 +33,7 @@ public class Worker extends Thread {
 
     }
 
-    public void receiveFile(String fileName, int chunksize, String providedUserName)
+    public void receiveFile(String fileName, int chunksize, String providedUserName, ObjectOutputStream out)
             throws Exception {
         int bytes = 0;
         String fileNewName = "./" + providedUserName + "/" + fileName;
@@ -47,6 +47,7 @@ public class Worker extends Thread {
         long initSize = size;
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         byte[] buffer = new byte[chunksize];
+        int checkSize = 0;
         while (size > 0
                 && (bytes = dataInputStream.read(
                         buffer, 0,
@@ -55,12 +56,26 @@ public class Worker extends Thread {
             fileOutputStream.write(buffer, 0, bytes);
             size -= bytes; // read upto file size
             System.out.println("bytes: " + bytes);
+
+            // send acknowledgement to clinet that server got this chunk
+            String s = "received the chunk of size " + bytes + " bytes";
+            out.writeObject(s);
+            checkSize += bytes;
+
         }
         // Here we received file
         System.out.println("File is Received");
 
         // buffer size is restoring to the previous size
         Server.CURR_BUFFER_SIZE -= initSize;
+        if (checkSize == initSize) {
+            String s = "successful reception of whole file of size " + initSize + " bytes";
+            out.writeObject(s);
+        } else {
+            String s = "Didn't get all the bytes, deleting garbage chunks";
+            out.writeObject(s);
+            // delete the chunks ->how?
+        }
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         fileOutputStream.close();
     }
@@ -178,7 +193,7 @@ public class Worker extends Thread {
 
                     serverResponse = String.valueOf(chunksize);
                     out.writeObject(serverResponse);
-                    receiveFile(p[0], chunksize, providedUserName);
+                    receiveFile(p[0], chunksize, providedUserName, out);
                     // adding the size of the buffer again (the )
 
                 }

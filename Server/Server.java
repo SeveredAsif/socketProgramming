@@ -7,7 +7,7 @@ import java.util.HashMap;
 
 public class Server {
 
-    static int MAX_BUFFER_SIZE = 15000;
+    static int MAX_BUFFER_SIZE = 50000;
     static int MIN_CHUNK_SIZE = 1024;
     static int MAX_CHUNK_SIZE = 4096;
     static int CURR_BUFFER_SIZE = 0;

@@ -90,7 +90,7 @@ public class Client {
 
                 int chunksize = Integer.parseInt(serverResponse);
                 try {
-                    sendFile(path, chunksize, dataOutputStream);
+                    sendFile(path, chunksize, dataOutputStream, in);
                 } catch (Exception e) {
                     // TODO: handle exception
                 }
@@ -109,8 +109,8 @@ public class Client {
         dataOutputStream.close();
     }
 
-    // sendFile function define here
-    private static void sendFile(String path, int chunksize, DataOutputStream dataOutputStream)
+    // sendFile function defined here
+    private static void sendFile(String path, int chunksize, DataOutputStream dataOutputStream, ObjectInputStream in)
             throws Exception {
         int bytes = 0;
         // Open the File where he located in your pc
@@ -125,7 +125,15 @@ public class Client {
             // Send the file to Server Socket
             dataOutputStream.write(buffer, 0, bytes);
             dataOutputStream.flush();
+
+            // wait for server acknowlegement of recieving this chunk
+            String serverResponse = (String) in.readObject();
+            System.out.println(serverResponse);
         }
+
+        // sending complete, get accomplishment/failure messege
+        String serverReponse = (String) in.readObject();
+        System.out.println(serverReponse);
 
         // close the file here
         fileInputStream.close();
