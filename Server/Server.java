@@ -7,9 +7,10 @@ import java.util.HashMap;
 
 public class Server {
 
-    int MAX_BUFFER_SIZE = 100;
-    int MIN_CHUNK_SIZE = 2;
-    int MAX_CHUNK_SIZE = 10;
+    static int MAX_BUFFER_SIZE = 15000;
+    static int MIN_CHUNK_SIZE = 1024;
+    static int MAX_CHUNK_SIZE = 4096;
+    static int CURR_BUFFER_SIZE = 0;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket welcomeSocket = new ServerSocket(6666);

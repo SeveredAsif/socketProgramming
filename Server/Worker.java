@@ -8,6 +8,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Random;
 
 public class Worker extends Thread {
     Socket socket;
@@ -32,13 +33,19 @@ public class Worker extends Thread {
 
     }
 
-    public void receiveFile(String fileName, int chunksize)
+    public void receiveFile(String fileName, int chunksize, String providedUserName)
             throws Exception {
         int bytes = 0;
-        FileOutputStream fileOutputStream = new FileOutputStream("xxxxx.txt");
+        String fileNewName = "./" + providedUserName + "/" + fileName;
+        FileOutputStream fileOutputStream = new FileOutputStream(fileNewName);
         System.out.println("here reached");
         long size = this.dataInputStream.readLong(); // read file size
         System.out.println("file size: " + size);
+
+        // reducing the size of the buffer
+        Server.CURR_BUFFER_SIZE += size;
+        long initSize = size;
+        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         byte[] buffer = new byte[chunksize];
         while (size > 0
                 && (bytes = dataInputStream.read(
@@ -51,6 +58,10 @@ public class Worker extends Thread {
         }
         // Here we received file
         System.out.println("File is Received");
+
+        // buffer size is restoring to the previous size
+        Server.CURR_BUFFER_SIZE -= initSize;
+        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         fileOutputStream.close();
     }
 
@@ -92,7 +103,8 @@ public class Worker extends Thread {
 
                 new File("./" + providedUserName).mkdirs();
                 System.out.println(providedUserName + " registered and logged in !");
-                System.out.println("A new directory with name " + providedUserName + " has been created!");
+                System.out.println("A new directory with name " + providedUserName
+                        + " has been created! (or it already existed!)");
 
                 out.writeObject(s);
             }
@@ -119,9 +131,11 @@ public class Worker extends Thread {
                     clients = clients.substring(1, clients.length());
                     out.writeObject(clients);
                 } else if (continuousListen.equalsIgnoreCase("upload")) {
-                    String serverResponse = "provide the file_name,file_size";
+                    String serverResponse = "provide the file_name";
                     out.writeObject(serverResponse);
                     String clientResponse = (String) in.readObject();
+
+                    // client will send path and file size
                     String[] p = clientResponse.split(",");
                     while (p.length != 2) {
                         serverResponse = "format wrong: Use format file_name,file_size";
@@ -130,11 +144,43 @@ public class Worker extends Thread {
                         p = clientResponse.split(",");
                     }
                     for (String part : p) {
-                        System.out.println(part + " :in server");
+                        System.out.println(part + " : in server");
                     }
-                    serverResponse = "4096"; // have to replace it using a random number
+
+                    // check if file can fit in buffer
+                    // if it can, decrease the buffer size of the class. if not, send some kind of
+                    // response to client
+                    // File file = new File(p[0]);
+                    // long filesize = file.length();
+                    // System.out.println("filesize: " + filesize);
+                    // System.out.println(Server.CURR_BUFFER_SIZE);
+                    // System.out.println(Server.MAX_BUFFER_SIZE);
+                    while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) > Server.MAX_BUFFER_SIZE) {
+                        serverResponse = "wrong choice! Cannot upload this file due to its size right now. Provide another file_name";
+                        out.writeObject(serverResponse);
+                        System.out.println("Buffer Size exceeded! Cannot upload file to server");
+                        clientResponse = (String) in.readObject();
+                        p = clientResponse.split(",");
+                    }
+                    // while (Server.CURR_BUFFER_SIZE + filesize <= Server.MAX_BUFFER_SIZE) {
+                    // serverResponse = "wrong choice! Cannot upload this file due to its size right
+                    // now";
+                    // out.writeObject(serverResponse);
+                    // System.out.println("Buffer Size exceeded! Cannot upload file to server");
+                    // clientResponse = (String) in.readObject();
+                    // p = clientResponse.split(",");
+                    // }
+
+                    Random r = new Random();
+                    int chunksize = r.nextInt(Server.MAX_CHUNK_SIZE - Server.MIN_CHUNK_SIZE + 1)
+                            + Server.MIN_CHUNK_SIZE;
+                    System.out.println("Chunk size: " + chunksize);
+
+                    serverResponse = String.valueOf(chunksize);
                     out.writeObject(serverResponse);
-                    receiveFile(p[0], 4096);
+                    receiveFile(p[0], chunksize, providedUserName);
+                    // adding the size of the buffer again (the )
+
                 }
             }
             this.dataInputStream.close();

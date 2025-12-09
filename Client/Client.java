@@ -66,21 +66,25 @@ public class Client {
             if (input == 3) {
                 msg = "upload";
                 out.writeObject(msg);
+
+                // server response is -> send file name
                 String serverResponse = (String) in.readObject();
                 System.out.println(serverResponse);
 
-                msg = myObj.nextLine();
+                msg = constructFilePathWithSize(myObj);
 
                 out.writeObject(msg);
                 serverResponse = (String) in.readObject();
                 System.out.println(serverResponse);
                 while (serverResponse.contains("wrong")) {
-                    msg = myObj.nextLine();
+
+                    msg = constructFilePathWithSize(myObj);
                     out.writeObject(msg);
                     serverResponse = (String) in.readObject();
                     System.out.println(serverResponse);
                 }
 
+                // the first part of msg has the path
                 String[] p = msg.split(",");
                 String path = p[0];
 
@@ -125,6 +129,49 @@ public class Client {
 
         // close the file here
         fileInputStream.close();
+    }
+
+    // Source - https://stackoverflow.com/q
+    // Posted by gkris, modified by community. See post 'Timeline' for change
+    // history
+    // Retrieved 2025-12-09, License - CC BY-SA 3.0
+
+    public static boolean checkExists(String directory, String file) {
+        // File dir = new File(directory);
+        // File[] dir_contents = dir.listFiles();
+        boolean check = new File(file).exists();
+        // System.out.println("Check" + check); // -->always says false
+
+        return check;
+    }
+
+    public static String constructFilePathWithSize(Scanner myObj) {
+        // msg contains file name
+        // System.out.println("reaching before scan");
+        String msg = myObj.nextLine();
+        // System.out.println("reaching after scan");
+
+        // check if it is in the directory
+
+        // System.out.println(checkExists("./", msg));
+
+        // if the file exists, go on. else take input again
+        while (checkExists("./", msg) == false) {
+            System.out.println("File doesn't exist in the current directory, please specify a correct file");
+            // msg contains file name
+            msg = myObj.nextLine();
+        }
+
+        // the file object with the pathname provided by user
+        File file = new File("./" + msg);
+
+        long file_size = file.length();
+        System.out.println("file size: " + file_size);
+
+        // constructing the client response to send to server
+        msg = "./" + msg + "," + file_size;
+
+        return msg;
     }
 
 }
