@@ -50,7 +50,7 @@ public class Client {
         }
         while (true) {
             System.out.println(
-                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges");
+                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges\n7.Upload in response to a request");
             int input;
             String nextInp = myObj.nextLine();
             input = Integer.parseInt(nextInp);
@@ -64,36 +64,50 @@ public class Client {
                 out.writeObject(msg);
             }
             if (input == 3) {
-                msg = "upload";
-                out.writeObject(msg);
+                // msg = "upload";
+                // out.writeObject(msg);
 
-                // server response is -> send file name
-                String serverResponse = (String) in.readObject();
-                System.out.println(serverResponse);
+                // // server response is -> send file name
+                // String serverResponse = (String) in.readObject();
+                // System.out.println(serverResponse);
 
-                msg = constructFilePathWithSize(myObj);
+                // msg = constructFilePathWithSize(myObj);
 
-                out.writeObject(msg);
-                serverResponse = (String) in.readObject();
-                System.out.println(serverResponse);
-                while (serverResponse.contains("wrong")) {
+                // out.writeObject(msg);
+                // serverResponse = (String) in.readObject();
+                // System.out.println(serverResponse);
+                // while (serverResponse.contains("wrong")) {
 
-                    msg = constructFilePathWithSize(myObj);
-                    out.writeObject(msg);
-                    serverResponse = (String) in.readObject();
-                    System.out.println(serverResponse);
+                // msg = constructFilePathWithSize(myObj);
+                // out.writeObject(msg);
+                // serverResponse = (String) in.readObject();
+                // System.out.println(serverResponse);
+                // }
+
+                // // the first part of msg has the path
+                // String[] p = msg.split(",");
+                // String path = p[0];
+
+                // int chunksize = Integer.parseInt(serverResponse);
+                // try {
+                // sendFile(path, chunksize, dataOutputStream, in);
+                // } catch (Exception e) {
+                // // TODO: handle exception
+                // }
+                System.out.println("1.Public Upload\n2.Private Upload");
+                msg = myObj.nextLine();
+                String publicOrPrivate;
+                if (msg.equals("1")) {
+                    publicOrPrivate = "public";
+                } else {
+                    publicOrPrivate = "private";
                 }
-
-                // the first part of msg has the path
-                String[] p = msg.split(",");
-                String path = p[0];
-
-                int chunksize = Integer.parseInt(serverResponse);
                 try {
-                    sendFile(path, chunksize, dataOutputStream, in);
+                    upload(publicOrPrivate, in, out, myObj, dataOutputStream);
                 } catch (Exception e) {
                     // TODO: handle exception
                 }
+
             }
             if (input == 4) {
                 msg = "list of clients";
@@ -122,6 +136,23 @@ public class Client {
                 out.writeObject(msg);
                 msg = (String) in.readObject();
                 System.out.println(msg);
+            }
+            if (input == 7) {
+                msg = "upload in response to request";
+                System.out.println(msg);
+                out.writeObject(msg);
+                msg = (String) in.readObject();
+                System.out.println(msg);
+                System.out.println("Provide a request id which you want to upload");
+                String reqId = myObj.nextLine();
+                System.out.println("You provided req id: " + reqId);
+                try {
+                    upload("public", in, out, myObj, dataOutputStream);
+                } catch (Exception e) {
+                    // TODO: handle exception
+                    System.out.println("exception here");
+                }
+                out.writeObject(reqId);
             }
 
         }
@@ -160,6 +191,41 @@ public class Client {
 
         // close the file here
         fileInputStream.close();
+    }
+
+    public static void upload(String publicOrPrivate, ObjectInputStream in, ObjectOutputStream out, Scanner myObj,
+            DataOutputStream dataOutputStream) throws Exception {
+        String msg = "upload," + publicOrPrivate;
+        System.out.println(msg);
+        out.writeObject(msg);
+
+        // server response is -> send file name
+        String serverResponse = (String) in.readObject();
+        System.out.println(serverResponse);
+
+        msg = constructFilePathWithSize(myObj);
+
+        out.writeObject(msg);
+        serverResponse = (String) in.readObject();
+        System.out.println(serverResponse);
+        while (serverResponse.contains("wrong")) {
+
+            msg = constructFilePathWithSize(myObj);
+            out.writeObject(msg);
+            serverResponse = (String) in.readObject();
+            System.out.println(serverResponse);
+        }
+
+        // the first part of msg has the path
+        String[] p = msg.split(",");
+        String path = p[0];
+
+        int chunksize = Integer.parseInt(serverResponse);
+        try {
+            sendFile(path, chunksize, dataOutputStream, in);
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
     }
 
     // Source - https://stackoverflow.com/q

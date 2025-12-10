@@ -15,14 +15,14 @@ public class Server {
     static HashMap<String, Socket> userNametoSocket;
     static int reqID = 0;
     static HashMap<String, ArrayList<String>> messageBox;
-    static HashMap<Integer, Socket> reqIdtoSocket;
+    static HashMap<Integer, String> reqIdtoUsername;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket welcomeSocket = new ServerSocket(6666);
         HashMap<String, Integer> userMap = new HashMap<>();
         userNametoSocket = new HashMap<>();
         messageBox = new HashMap<>();
-        reqIdtoSocket = new HashMap<>();
+        reqIdtoUsername = new HashMap<>();
 
         while (true) {
             int x = 5;
