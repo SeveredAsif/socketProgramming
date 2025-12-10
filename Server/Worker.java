@@ -4,11 +4,14 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.ArrayList;
 
 public class Worker extends Thread {
@@ -32,58 +35,6 @@ public class Worker extends Thread {
             // TODO: handle exception
         }
 
-    }
-
-    public void receiveFile(String fileName, int chunksize, String providedUserName, ObjectOutputStream out,
-            String publicOrPrivate)
-            throws Exception {
-        int bytes = 0;
-        String fileNewName = "./" + providedUserName + "/" + publicOrPrivate + "/" + fileName;
-        File file = new File(fileNewName);
-
-        // Create parent directory if missing
-        file.getParentFile().mkdirs();
-        FileOutputStream fileOutputStream = new FileOutputStream(file);
-        System.out.println("here reached");
-        long size = this.dataInputStream.readLong(); // read file size
-        System.out.println("file size: " + size);
-
-        // reducing the size of the buffer
-        Server.CURR_BUFFER_SIZE += size;
-        long initSize = size;
-        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
-        byte[] buffer = new byte[chunksize];
-        int checkSize = 0;
-        while (size > 0
-                && (bytes = dataInputStream.read(
-                        buffer, 0,
-                        (int) Math.min(buffer.length, size))) != -1) {
-            // Here we write the file using write method
-            fileOutputStream.write(buffer, 0, bytes);
-            size -= bytes; // read upto file size
-            System.out.println("bytes: " + bytes);
-
-            // send acknowledgement to clinet that server got this chunk
-            String s = "Server received the chunk of size " + bytes + " bytes";
-            out.writeObject(s);
-            checkSize += bytes;
-
-        }
-        // Here we received file
-        System.out.println("File is Received");
-
-        // buffer size is restoring to the previous size
-        Server.CURR_BUFFER_SIZE -= initSize;
-        if (checkSize == initSize) {
-            String s = "successful reception of whole file of size " + initSize + " bytes";
-            out.writeObject(s);
-        } else {
-            String s = "Didn't get all the bytes, deleting garbage chunks";
-            out.writeObject(s);
-            // delete the chunks ->how?
-        }
-        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
-        fileOutputStream.close();
     }
 
     public void run() {
@@ -157,61 +108,13 @@ public class Worker extends Thread {
                 } else if (continuousListen.contains("upload,")) {
                     String[] p = continuousListen.split(",");
                     String publicOrPrivate = p[1];
-                    String serverResponse = "provide the file_name";
-                    out.writeObject(serverResponse);
-                    String clientResponse = (String) in.readObject();
-
-                    // client will send path and file size
-                    p = clientResponse.split(",");
-                    while (p.length != 2) {
-                        serverResponse = "format wrong: Use format file_name,file_size";
-                        out.writeObject(serverResponse);
-                        clientResponse = (String) in.readObject();
-                        p = clientResponse.split(",");
-                    }
-                    for (String part : p) {
-                        System.out.println(part + " : in server");
-                    }
-
-                    // check if file can fit in buffer
-                    // if it can, decrease the buffer size of the class. if not, send some kind of
-                    // response to client
-                    // File file = new File(p[0]);
-                    // long filesize = file.length();
-                    // System.out.println("filesize: " + filesize);
-                    // System.out.println(Server.CURR_BUFFER_SIZE);
-                    // System.out.println(Server.MAX_BUFFER_SIZE);
-                    while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) > Server.MAX_BUFFER_SIZE) {
-                        serverResponse = "wrong choice! Cannot upload this file due to its size right now. Provide another file_name";
-                        out.writeObject(serverResponse);
-                        System.out.println("Buffer Size exceeded! Cannot upload file to server");
-                        clientResponse = (String) in.readObject();
-                        p = clientResponse.split(",");
-                    }
-                    // while (Server.CURR_BUFFER_SIZE + filesize <= Server.MAX_BUFFER_SIZE) {
-                    // serverResponse = "wrong choice! Cannot upload this file due to its size right
-                    // now";
-                    // out.writeObject(serverResponse);
-                    // System.out.println("Buffer Size exceeded! Cannot upload file to server");
-                    // clientResponse = (String) in.readObject();
-                    // p = clientResponse.split(",");
-                    // }
-
-                    Random r = new Random();
-                    int chunksize = r.nextInt(Server.MAX_CHUNK_SIZE - Server.MIN_CHUNK_SIZE + 1)
-                            + Server.MIN_CHUNK_SIZE;
-                    System.out.println("Chunk size: " + chunksize);
-
-                    serverResponse = String.valueOf(chunksize);
-                    out.writeObject(serverResponse);
-                    receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate);
-                    // adding the size of the buffer again (the )
+                    upload(in, out, providedUserName, this.dataInputStream, publicOrPrivate);
 
                 } else if (continuousListen.equalsIgnoreCase("request file")) {
                     s = (String) in.readObject();
                     String[] p = s.split(",");
                     if (!p[1].equalsIgnoreCase("ALL")) {
-                        Socket recipientSocket = Server.userNametoSocket.get(p[1]);
+                        // Socket recipientSocket = Server.userNametoSocket.get(p[1]);
 
                         // put reqId to userName map
                         Server.reqIdtoUsername.put(Server.reqID, providedUserName);
@@ -245,62 +148,11 @@ public class Worker extends Thread {
                     out.writeObject(s);
 
                     // have to upload
-                    // ----------------------- put this in a func -------------------------
-
                     String clientSend = (String) in.readObject();
                     String[] p = clientSend.split(",");
                     String publicOrPrivate = p[1];
-                    String serverResponse = "provide the file_name";
-                    out.writeObject(serverResponse);
-                    String clientResponse = (String) in.readObject();
+                    upload(in, out, providedUserName, this.dataInputStream, publicOrPrivate);
 
-                    // client will send path and file size
-                    p = clientResponse.split(",");
-                    while (p.length != 2) {
-                        serverResponse = "format wrong: Use format file_name,file_size";
-                        out.writeObject(serverResponse);
-                        clientResponse = (String) in.readObject();
-                        p = clientResponse.split(",");
-                    }
-                    for (String part : p) {
-                        System.out.println(part + " : in server");
-                    }
-
-                    // check if file can fit in buffer
-                    // if it can, decrease the buffer size of the class. if not, send some kind of
-                    // response to client
-                    // File file = new File(p[0]);
-                    // long filesize = file.length();
-                    // System.out.println("filesize: " + filesize);
-                    // System.out.println(Server.CURR_BUFFER_SIZE);
-                    // System.out.println(Server.MAX_BUFFER_SIZE);
-                    while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) > Server.MAX_BUFFER_SIZE) {
-                        serverResponse = "wrong choice! Cannot upload this file due to its size right now. Provide another file_name";
-                        out.writeObject(serverResponse);
-                        System.out.println("Buffer Size exceeded! Cannot upload file to server");
-                        clientResponse = (String) in.readObject();
-                        p = clientResponse.split(",");
-                    }
-                    // while (Server.CURR_BUFFER_SIZE + filesize <= Server.MAX_BUFFER_SIZE) {
-                    // serverResponse = "wrong choice! Cannot upload this file due to its size right
-                    // now";
-                    // out.writeObject(serverResponse);
-                    // System.out.println("Buffer Size exceeded! Cannot upload file to server");
-                    // clientResponse = (String) in.readObject();
-                    // p = clientResponse.split(",");
-                    // }
-
-                    Random r = new Random();
-                    int chunksize = r.nextInt(Server.MAX_CHUNK_SIZE - Server.MIN_CHUNK_SIZE + 1)
-                            + Server.MIN_CHUNK_SIZE;
-                    System.out.println("Chunk size: " + chunksize);
-
-                    serverResponse = String.valueOf(chunksize);
-                    out.writeObject(serverResponse);
-                    receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate);
-                    // adding the size of the buffer again (the )
-
-                    // ----------------------- put this in a func -------------------------
                     // get the req Id
                     s = (String) in.readObject();
                     int reqId = Integer.parseInt(s);
@@ -315,7 +167,57 @@ public class Worker extends Thread {
 
                     Server.messageBox.put(requesterName, msgBox);
 
+                } else if (continuousListen.equalsIgnoreCase("see downloads and uploads")) {
+
+                    String publicDirName = "./" + providedUserName + "/public";
+                    String privateDirName = "./" + providedUserName + "/private";
+                    File dir = new File(publicDirName);
+                    File[] dir_contents = dir.listFiles();
+
+                    String publicFiles = "public:\n";
+                    if (dir_contents != null) {
+                        for (int i = 0; i < dir_contents.length; i++) {
+                            publicFiles += dir_contents[i].getName() + "\n";
+                        }
+                    }
+
+                    dir = new File(privateDirName);
+                    dir_contents = dir.listFiles();
+
+                    String privateFiles = "private:\n";
+                    if (dir_contents != null) {
+                        for (int i = 0; i < dir_contents.length; i++) {
+                            privateFiles += dir_contents[i].getName() + "\n";
+                        }
+                    }
+
+                    String serverResponse = "uploads:\n" + publicFiles + privateFiles;
+                    out.writeObject(serverResponse);
+                } else if (continuousListen.equalsIgnoreCase("download file")) {
+
+                    StringBuilder response = new StringBuilder("uploads:\n\n");
+
+                    for (Map.Entry<Integer, ArrayList<String>> entry : Server.fileIdtoFileNameAndUploader.entrySet()) {
+
+                        int fileId = entry.getKey();
+                        ArrayList<String> meta = entry.getValue();
+
+                        String uploader = meta.get(0);
+                        String fileName = meta.get(1);
+                        String visibility = meta.get(2);
+
+                        // only show public files
+                        if (!visibility.equalsIgnoreCase("public"))
+                            continue;
+
+                        response.append("[File ID: ").append(fileId).append("]\n");
+                        response.append("Uploader : ").append(uploader).append("\n");
+                        response.append("Filename : ").append(fileName).append("\n\n");
+                    }
+
+                    out.writeObject(response.toString());
                 }
+
             }
             this.dataInputStream.close();
             this.dataOutputStream.close();
@@ -323,6 +225,129 @@ public class Worker extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public static void receiveFile(String fileName, int chunksize, String providedUserName, ObjectOutputStream out,
+            String publicOrPrivate, DataInputStream dataInputStream)
+            throws Exception {
+        int bytes = 0;
+        String fileNewName = "./" + providedUserName + "/" + publicOrPrivate + "/" + fileName;
+        File file = new File(fileNewName);
+
+        // Create parent directory if missing
+        file.getParentFile().mkdirs();
+        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        System.out.println("here reached");
+        long size = dataInputStream.readLong(); // read file size
+        System.out.println("file size: " + size);
+
+        // reducing the size of the buffer
+        Server.CURR_BUFFER_SIZE += size;
+        long initSize = size;
+        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
+        byte[] buffer = new byte[chunksize];
+        int checkSize = 0;
+        while (size > 0
+                && (bytes = dataInputStream.read(
+                        buffer, 0,
+                        (int) Math.min(buffer.length, size))) != -1) {
+            // Here we write the file using write method
+            fileOutputStream.write(buffer, 0, bytes);
+            size -= bytes; // read upto file size
+            System.out.println("bytes: " + bytes);
+
+            // send acknowledgement to clinet that server got this chunk
+            String s = "Server received the chunk of size " + bytes + " bytes";
+            out.writeObject(s);
+            checkSize += bytes;
+
+        }
+        // Here we received file
+        System.out.println("File is Received");
+
+        // buffer size is restoring to the previous size
+        Server.CURR_BUFFER_SIZE -= initSize;
+        if (checkSize == initSize) {
+            String s = "successful reception of whole file of size " + initSize + " bytes";
+            out.writeObject(s);
+        } else {
+            String s = "Didn't get all the bytes, deleting garbage chunks";
+            out.writeObject(s);
+            // delete the chunks ->how?
+        }
+        System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
+        fileOutputStream.close();
+    }
+
+    public static void upload(ObjectInputStream in, ObjectOutputStream out, String providedUserName,
+            DataInputStream dataInputStream, String publicOrPrivate) throws Exception {
+
+        String serverResponse = "provide the file_name";
+        out.writeObject(serverResponse);
+        String clientResponse = (String) in.readObject();
+
+        // client will send path and file size
+        String[] p = clientResponse.split(",");
+        while (p.length != 2) {
+            serverResponse = "format wrong: Use format file_name,file_size";
+            out.writeObject(serverResponse);
+            clientResponse = (String) in.readObject();
+            p = clientResponse.split(",");
+        }
+        for (String part : p) {
+            System.out.println(part + " : in server");
+        }
+
+        while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) > Server.MAX_BUFFER_SIZE) {
+            serverResponse = "wrong choice! Cannot upload this file due to its size right now. Provide another file_name";
+            out.writeObject(serverResponse);
+            System.out.println("Buffer Size exceeded! Cannot upload file to server");
+            clientResponse = (String) in.readObject();
+            p = clientResponse.split(",");
+        }
+
+        Random r = new Random();
+        int chunksize = r.nextInt(Server.MAX_CHUNK_SIZE - Server.MIN_CHUNK_SIZE + 1)
+                + Server.MIN_CHUNK_SIZE;
+        System.out.println("Chunk size: " + chunksize);
+
+        String fileId = String.valueOf(Server.fileId);
+        ArrayList<String> al = new ArrayList<String>();
+        al.add(providedUserName);
+        al.add(p[0]); // p[0] is filename
+        al.add(publicOrPrivate);
+        Server.fileIdtoFileNameAndUploader.put(Server.fileId, al);
+
+        Server.fileId++;
+        serverResponse = String.valueOf(chunksize) + "," + fileId;
+        out.writeObject(serverResponse);
+        receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate, dataInputStream);
+        // adding the size of the buffer again (the )
+    }
+
+    public static void sendFile(String path, DataOutputStream dataOutputStream, ObjectInputStream in)
+            throws Exception {
+        int bytes = 0;
+        // Open the File where he located in your pc
+        File file = new File(path);
+        System.out.println(file);
+        FileInputStream fileInputStream = new FileInputStream(file);
+        // Here we send the File to Server
+        dataOutputStream.writeLong(file.length());
+        // Here we break file into chunks
+        byte[] buffer = new byte[Server.MAX_BUFFER_SIZE];
+        while ((bytes = fileInputStream.read(buffer)) != -1) {
+            // Send the file to Server Socket
+            dataOutputStream.write(buffer, 0, bytes);
+            dataOutputStream.flush();
+        }
+
+        // sending complete, get accomplishment/failure messege
+        String serverReponse = (String) in.readObject();
+        System.out.println(serverReponse);
+
+        // close the file here
+        fileInputStream.close();
     }
 
 }

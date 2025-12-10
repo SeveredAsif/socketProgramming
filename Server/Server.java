@@ -16,6 +16,8 @@ public class Server {
     static int reqID = 0;
     static HashMap<String, ArrayList<String>> messageBox;
     static HashMap<Integer, String> reqIdtoUsername;
+    static int fileId = 0;
+    static HashMap<Integer, ArrayList<String>> fileIdtoFileNameAndUploader;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket welcomeSocket = new ServerSocket(6666);
@@ -23,6 +25,7 @@ public class Server {
         userNametoSocket = new HashMap<>();
         messageBox = new HashMap<>();
         reqIdtoUsername = new HashMap<>();
+        fileIdtoFileNameAndUploader = new HashMap<>();
 
         while (true) {
             int x = 5;

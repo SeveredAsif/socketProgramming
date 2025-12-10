@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -50,7 +51,7 @@ public class Client {
         }
         while (true) {
             System.out.println(
-                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges\n7.Upload in response to a request");
+                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges\n7.Upload in response to a request\n8.See Downloads and Uploads\n9.Download a file");
             int input;
             String nextInp = myObj.nextLine();
             input = Integer.parseInt(nextInp);
@@ -64,36 +65,7 @@ public class Client {
                 out.writeObject(msg);
             }
             if (input == 3) {
-                // msg = "upload";
-                // out.writeObject(msg);
 
-                // // server response is -> send file name
-                // String serverResponse = (String) in.readObject();
-                // System.out.println(serverResponse);
-
-                // msg = constructFilePathWithSize(myObj);
-
-                // out.writeObject(msg);
-                // serverResponse = (String) in.readObject();
-                // System.out.println(serverResponse);
-                // while (serverResponse.contains("wrong")) {
-
-                // msg = constructFilePathWithSize(myObj);
-                // out.writeObject(msg);
-                // serverResponse = (String) in.readObject();
-                // System.out.println(serverResponse);
-                // }
-
-                // // the first part of msg has the path
-                // String[] p = msg.split(",");
-                // String path = p[0];
-
-                // int chunksize = Integer.parseInt(serverResponse);
-                // try {
-                // sendFile(path, chunksize, dataOutputStream, in);
-                // } catch (Exception e) {
-                // // TODO: handle exception
-                // }
                 System.out.println("1.Public Upload\n2.Private Upload");
                 msg = myObj.nextLine();
                 String publicOrPrivate;
@@ -154,6 +126,18 @@ public class Client {
                 }
                 out.writeObject(reqId);
             }
+            if (input == 8) {
+                msg = "see downloads and uploads";
+                out.writeObject(msg);
+                msg = (String) in.readObject();
+                System.out.println(msg);
+            }
+            if (input == 9) {
+                msg = "download file";
+                out.writeObject(msg);
+                msg = (String) in.readObject();
+                System.out.println(msg);
+            }
 
         }
 
@@ -168,10 +152,12 @@ public class Client {
             throws Exception {
         int bytes = 0;
         // Open the File where he located in your pc
+        System.out.println("the path is " + path);
         File file = new File(path);
-        System.out.println(file);
+        System.out.println(file + " is the file ");
         FileInputStream fileInputStream = new FileInputStream(file);
         // Here we send the File to Server
+        System.out.println("dile length is " + file.length());
         dataOutputStream.writeLong(file.length());
         // Here we break file into chunks
         byte[] buffer = new byte[chunksize];
@@ -203,11 +189,13 @@ public class Client {
         String serverResponse = (String) in.readObject();
         System.out.println(serverResponse);
 
+        System.out.println("till here, in upload function");
         msg = constructFilePathWithSize(myObj);
+        System.out.println(msg);
 
         out.writeObject(msg);
         serverResponse = (String) in.readObject();
-        System.out.println(serverResponse);
+        System.out.println(serverResponse + " is the server response");
         while (serverResponse.contains("wrong")) {
 
             msg = constructFilePathWithSize(myObj);
@@ -219,8 +207,10 @@ public class Client {
         // the first part of msg has the path
         String[] p = msg.split(",");
         String path = p[0];
-
-        int chunksize = Integer.parseInt(serverResponse);
+        System.out.println("path is " + path);
+        p = serverResponse.split(",");
+        int chunksize = Integer.parseInt(p[0]);
+        System.out.println("the chunk size is " + chunksize);
         try {
             sendFile(path, chunksize, dataOutputStream, in);
         } catch (Exception e) {
