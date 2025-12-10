@@ -50,7 +50,7 @@ public class Client {
         }
         while (true) {
             System.out.println(
-                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Unread messeges");
+                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges");
             int input;
             String nextInp = myObj.nextLine();
             input = Integer.parseInt(nextInp);
@@ -99,6 +99,29 @@ public class Client {
                 msg = "list of clients";
                 out.writeObject(msg);
                 System.out.println(in.readObject());
+            }
+            if (input == 5) {
+                msg = "request file";
+                out.writeObject(msg);
+                System.out.println("Provide file_description,recipient(individual or ALL)");
+                msg = myObj.nextLine();
+                String[] p = msg.split(",");
+                while (p.length != 2) {
+                    System.out.println("Wrong format! Provide file_description,recipient(individual or ALL)");
+                    msg = myObj.nextLine();
+                    p = msg.split(",");
+                }
+                out.writeObject(msg);
+
+                msg = (String) in.readObject();
+                System.out.println(msg);
+
+            }
+            if (input == 6) {
+                msg = "read msgbox";
+                out.writeObject(msg);
+                msg = (String) in.readObject();
+                System.out.println(msg);
             }
 
         }

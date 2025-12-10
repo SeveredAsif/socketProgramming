@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.ArrayList;
 
 public class Worker extends Thread {
     Socket socket;
@@ -58,7 +59,7 @@ public class Worker extends Thread {
             System.out.println("bytes: " + bytes);
 
             // send acknowledgement to clinet that server got this chunk
-            String s = "received the chunk of size " + bytes + " bytes";
+            String s = "Server received the chunk of size " + bytes + " bytes";
             out.writeObject(s);
             checkSize += bytes;
 
@@ -110,12 +111,14 @@ public class Worker extends Thread {
                     userMap.put(providedUserName, 1);
                     s = "Logged in successfully!";
                     System.out.println(providedUserName + " logged in !");
+                    Server.userNametoSocket.put(providedUserName, socket);
                     out.writeObject(s);
+
                 }
             } else {
                 userMap.put(providedUserName, 1);
                 s = "User registered and Logged in successfully!";
-
+                Server.userNametoSocket.put(providedUserName, socket);
                 new File("./" + providedUserName).mkdirs();
                 System.out.println(providedUserName + " registered and logged in !");
                 System.out.println("A new directory with name " + providedUserName
@@ -131,6 +134,7 @@ public class Worker extends Thread {
                     userMap.put(providedUserName, 0);
                     // close the connection
                     try {
+                        Server.userNametoSocket.remove(providedUserName, socket);
                         socket.close();
                         System.out.println(providedUserName + " logged out!");
                         break;
@@ -196,6 +200,34 @@ public class Worker extends Thread {
                     receiveFile(p[0], chunksize, providedUserName, out);
                     // adding the size of the buffer again (the )
 
+                } else if (continuousListen.equalsIgnoreCase("request file")) {
+                    s = (String) in.readObject();
+                    String[] p = s.split(",");
+                    if (!p[1].equalsIgnoreCase("ALL")) {
+                        Socket recipientSocket = Server.userNametoSocket.get(p[1]);
+
+                        // put reqId to socket map
+                        Server.reqIdtoSocket.put(Server.reqID, recipientSocket);
+
+                        ArrayList<String> msgBox = Server.messageBox.getOrDefault(p[1], new ArrayList<>());
+                        String msg = String.valueOf(Server.reqID) + "," + p[0];
+                        msgBox.add(msg);
+
+                        Server.messageBox.put(p[1], msgBox);
+                        // System.out.println(Server.messageBox.get(p[1]));
+                        Server.reqID++;
+
+                    }
+                    s = "request done!";
+                    out.writeObject(s);
+                    System.out.println("Request of user " + providedUserName + " added and sent to recipient");
+                } else if (continuousListen.equalsIgnoreCase("read msgbox")) {
+                    s = "Messages:\n";
+                    ArrayList<String> inbox = Server.messageBox.getOrDefault(providedUserName, new ArrayList<>());
+                    for (String x : inbox) {
+                        s += "* " + x + "\n";
+                    }
+                    out.writeObject(s);
                 }
             }
             this.dataInputStream.close();

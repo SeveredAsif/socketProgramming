@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 public class Server {
 
@@ -11,10 +12,17 @@ public class Server {
     static int MIN_CHUNK_SIZE = 1024;
     static int MAX_CHUNK_SIZE = 4096;
     static int CURR_BUFFER_SIZE = 0;
+    static HashMap<String, Socket> userNametoSocket;
+    static int reqID = 0;
+    static HashMap<String, ArrayList<String>> messageBox;
+    static HashMap<Integer, Socket> reqIdtoSocket;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket welcomeSocket = new ServerSocket(6666);
         HashMap<String, Integer> userMap = new HashMap<>();
+        userNametoSocket = new HashMap<>();
+        messageBox = new HashMap<>();
+        reqIdtoSocket = new HashMap<>();
 
         while (true) {
             int x = 5;
