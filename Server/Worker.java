@@ -43,6 +43,7 @@ public class Worker extends Thread {
 
             ObjectOutputStream out = new ObjectOutputStream(this.socket.getOutputStream());
             ObjectInputStream in = new ObjectInputStream(this.socket.getInputStream());
+            ArrayList<String> downloads = new ArrayList<String>();
 
             // for login, we need username
             String s = "Provide username";
@@ -204,6 +205,10 @@ public class Worker extends Thread {
                     }
 
                     String serverResponse = "uploads:\n" + publicFiles + privateFiles;
+                    serverResponse += "downloads:\n";
+                    for (String d : downloads) {
+                        serverResponse += d;
+                    }
                     out.writeObject(serverResponse);
                 } else if (continuousListen.equalsIgnoreCase("download file")) {
 
@@ -226,10 +231,13 @@ public class Worker extends Thread {
                         response.append("Uploader : ").append(uploader).append("\n");
                         response.append("Filename : ").append(fileName).append("\n\n");
                     }
-                    response.append("choose a File ID\n");
+                    response.append("choose a File ID, type \"No\" if you want to go back\n");
                     out.writeObject(response.toString());
 
                     String choice = (String) in.readObject();
+                    if (choice.equalsIgnoreCase("No")) {
+                        continue;
+                    }
                     int choiceClient = Integer.parseInt(choice);
                     ArrayList<String> file = Server.fileIdtoFileNameAndUploader.get(choiceClient);
                     String s1 = file.get(0); // username
@@ -249,6 +257,9 @@ public class Worker extends Thread {
                     String x = "File sent to client (download)";
                     System.out.println(x);
                     out.writeObject(x);
+
+                    // adding to self downloads
+                    downloads.add(s2);
                 }
 
             }

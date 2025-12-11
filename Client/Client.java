@@ -144,6 +144,10 @@ public class Client {
                 msg = myObj.nextLine();
                 out.writeObject(msg);
 
+                if (msg.equalsIgnoreCase("No")) {
+                    continue;
+                }
+
                 // read the filename from server
                 String filename = (String) in.readObject();
                 System.out.println("You chose this file to download: " + filename);
