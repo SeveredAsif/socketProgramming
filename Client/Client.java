@@ -135,8 +135,37 @@ public class Client {
             if (input == 9) {
                 msg = "download file";
                 out.writeObject(msg);
+
+                // downloadable files
                 msg = (String) in.readObject();
                 System.out.println(msg);
+
+                // choose file to download
+                msg = myObj.nextLine();
+                out.writeObject(msg);
+
+                // read the filename from server
+                String filename = (String) in.readObject();
+                System.out.println("Toy chose this file to download: " + filename);
+
+                // receive the chunksize (max buffer size from server)
+                msg = (String) in.readObject();
+                int MAX_BUFFER_SIZE = Integer.parseInt(msg);
+
+                // receive the file
+                System.out.println("Choose the path where you want to download: ");
+                String providedPath = myObj.nextLine();
+
+                try {
+                    receiveFile(filename, MAX_BUFFER_SIZE, providedPath, out, dataInputStream);
+                } catch (Exception e) {
+                    // TODO: handle exception
+                }
+
+                // download done msg
+                msg = (String) in.readObject();
+                System.out.println(msg);
+
             }
 
         }
@@ -157,7 +186,6 @@ public class Client {
         System.out.println(file + " is the file ");
         FileInputStream fileInputStream = new FileInputStream(file);
         // Here we send the File to Server
-        System.out.println("dile length is " + file.length());
         dataOutputStream.writeLong(file.length());
         // Here we break file into chunks
         byte[] buffer = new byte[chunksize];
@@ -189,13 +217,11 @@ public class Client {
         String serverResponse = (String) in.readObject();
         System.out.println(serverResponse);
 
-        System.out.println("till here, in upload function");
         msg = constructFilePathWithSize(myObj);
-        System.out.println(msg);
 
         out.writeObject(msg);
         serverResponse = (String) in.readObject();
-        System.out.println(serverResponse + " is the server response");
+        System.out.println(serverResponse);
         while (serverResponse.contains("wrong")) {
 
             msg = constructFilePathWithSize(myObj);
@@ -207,7 +233,7 @@ public class Client {
         // the first part of msg has the path
         String[] p = msg.split(",");
         String path = p[0];
-        System.out.println("path is " + path);
+
         p = serverResponse.split(",");
         int chunksize = Integer.parseInt(p[0]);
         System.out.println("the chunk size is " + chunksize);
@@ -259,6 +285,36 @@ public class Client {
         msg = "./" + msg + "," + file_size;
 
         return msg;
+    }
+
+    public static void receiveFile(String fileName, int chunksize, String providedPath, ObjectOutputStream out,
+            DataInputStream dataInputStream)
+            throws Exception {
+        int bytes = 0;
+        String fileNewName = "./" + providedPath + "/" + fileName;
+        File file = new File(fileNewName);
+
+        // Create parent directory if missing
+        file.getParentFile().mkdirs();
+        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        System.out.println("here reached");
+        long size = dataInputStream.readLong(); // read file size
+        System.out.println("file size: " + size);
+        byte[] buffer = new byte[chunksize];
+
+        while (size > 0
+                && (bytes = dataInputStream.read(
+                        buffer, 0,
+                        (int) Math.min(buffer.length, size))) != -1) {
+            // Here we write the file using write method
+            fileOutputStream.write(buffer, 0, bytes);
+            size -= bytes; // read upto file size
+            System.out.println("bytes: " + bytes);
+
+        }
+        // Here we received file
+        System.out.println("File is Downloaded");
+        fileOutputStream.close();
     }
 
 }

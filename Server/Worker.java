@@ -214,8 +214,29 @@ public class Worker extends Thread {
                         response.append("Uploader : ").append(uploader).append("\n");
                         response.append("Filename : ").append(fileName).append("\n\n");
                     }
-
+                    response.append("choose a File ID\n");
                     out.writeObject(response.toString());
+
+                    String choice = (String) in.readObject();
+                    int choiceClient = Integer.parseInt(choice);
+                    ArrayList<String> file = Server.fileIdtoFileNameAndUploader.get(choiceClient);
+                    String s1 = file.get(0); // username
+                    String s2 = file.get(1); // filename
+                    String s3 = file.get(2);// public or private
+
+
+                    //send filename to client
+                    out.writeObject(s2);
+
+                    //send the max buffer size 
+                    out.writeObject(String.valueOf(Server.MAX_BUFFER_SIZE));
+
+                    String path = "./" + s1 + "/" + s3 + "/" + s2;
+                    System.out.println(path + " what im sending");
+
+                    sendFile(path, dataOutputStream, in);
+                    String x = "File sent to client (download)";
+                    out.writeObject(x);
                 }
 
             }
