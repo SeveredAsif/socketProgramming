@@ -1,17 +1,19 @@
 package Server;
 
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.Scanner;
 import java.util.ArrayList;
 
 public class Worker extends Thread {
@@ -253,7 +255,7 @@ public class Worker extends Thread {
                     String path = "./" + s1 + "/" + s3 + "/" + s2;
                     System.out.println(path + " what im sending");
 
-                    sendFile(path, dataOutputStream, in);
+                    sendFile(path, dataOutputStream, in, s2, s1);
                     String x = "File sent to client (download)";
                     System.out.println(x);
                     out.writeObject(x);
@@ -276,10 +278,24 @@ public class Worker extends Thread {
             throws Exception {
         int bytes = 0;
         String fileNewName = "./" + providedUserName + "/" + publicOrPrivate + "/" + fileName;
+        String logFileName = "./" + providedUserName + "/logs.txt";
         File file = new File(fileNewName);
+        File logfile = new File(logFileName);
 
         // Create parent directory if missing
         file.getParentFile().mkdirs();
+        logfile.getParentFile().mkdirs();
+
+        // write to log file
+        BufferedWriter logWriter = new BufferedWriter(
+                new FileWriter(logfile, true));
+        LocalDateTime myObj = LocalDateTime.now();
+
+        String str = "upload," + fileName + "," + myObj.toString() + ",";
+
+        // Writing on output stream
+        logWriter.write(str);
+
         FileOutputStream fileOutputStream = new FileOutputStream(file);
         System.out.println("here reached");
         long size = dataInputStream.readLong(); // read file size
@@ -314,13 +330,16 @@ public class Worker extends Thread {
         if (checkSize == initSize) {
             String s = "successful reception of whole file of size " + initSize + " bytes";
             out.writeObject(s);
+            logWriter.append("success\n");
         } else {
             String s = "Didn't get all the bytes, deleting garbage chunks";
             out.writeObject(s);
+            logWriter.append("failure\n");
             // delete the chunks ->how?
         }
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         fileOutputStream.close();
+        logWriter.close();
     }
 
     public static void upload(ObjectInputStream in, ObjectOutputStream out, String providedUserName,
@@ -369,11 +388,26 @@ public class Worker extends Thread {
         // adding the size of the buffer again (the )
     }
 
-    public static void sendFile(String path, DataOutputStream dataOutputStream, ObjectInputStream in)
+    public static void sendFile(String path, DataOutputStream dataOutputStream, ObjectInputStream in, String fileName,
+            String userName)
             throws Exception {
         int bytes = 0;
         // Open the File where he located in your pc
         File file = new File(path);
+        File logfile = new File("./" + userName + "/logs.txt");
+
+        logfile.getParentFile().mkdirs();
+
+        // write to log file
+        BufferedWriter logWriter = new BufferedWriter(
+                new FileWriter(logfile, true));
+        LocalDateTime myObj = LocalDateTime.now();
+
+        String str = "download," + fileName + "," + myObj.toString() + ",";
+
+        // Writing on output stream
+        logWriter.write(str);
+
         System.out.println(file);
         FileInputStream fileInputStream = new FileInputStream(file);
         // Here we send the File to Server
@@ -386,6 +420,8 @@ public class Worker extends Thread {
             dataOutputStream.flush();
         }
 
+        logWriter.append("success\n");
+        logWriter.close();
         // close the file here
         fileInputStream.close();
     }
