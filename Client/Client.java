@@ -146,7 +146,7 @@ public class Client {
 
                 // read the filename from server
                 String filename = (String) in.readObject();
-                System.out.println("Toy chose this file to download: " + filename);
+                System.out.println("You chose this file to download: " + filename);
 
                 // receive the chunksize (max buffer size from server)
                 msg = (String) in.readObject();

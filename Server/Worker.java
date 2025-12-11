@@ -127,15 +127,27 @@ public class Worker extends Thread {
                         // System.out.println(Server.messageBox.get(p[1]));
                         Server.reqID++;
 
+                    } else {
+                        Server.reqIdtoUsername.put(Server.reqID, providedUserName);
+                        for (String users : Server.userNametoSocket.keySet()) {
+                            ArrayList<String> msgBox = Server.messageBox.getOrDefault(users, new ArrayList<>());
+                            String msg = "Req id of file:=" + String.valueOf(Server.reqID)
+                                    + ", requested file description::"
+                                    + p[0];
+                            msgBox.add(msg);
+
+                            Server.messageBox.put(users, msgBox);
+                        }
+                        Server.reqID++;
                     }
                     s = "request done!";
                     out.writeObject(s);
-                    System.out.println("Request of user " + providedUserName + " added and sent to recipient");
+                    System.out.println("Request of user " + providedUserName + " added and sent to recipient(s)");
                 } else if (continuousListen.equalsIgnoreCase("read msgbox")) {
-                    s = "Messages:\n   Request id,File description\n";
+                    s = "Messages:\n ";
                     ArrayList<String> inbox = Server.messageBox.getOrDefault(providedUserName, new ArrayList<>());
                     for (String x : inbox) {
-                        s += "* " + x + "\n";
+                        s += "Msg: " + x + "\n";
                     }
                     out.writeObject(s);
                 } else if (continuousListen.equalsIgnoreCase("upload in response to request")) {
@@ -143,7 +155,7 @@ public class Worker extends Thread {
                     s = "Messages:\n";
                     ArrayList<String> inbox = Server.messageBox.getOrDefault(providedUserName, new ArrayList<>());
                     for (String x : inbox) {
-                        s += "* " + x + "\n";
+                        s += "Msg: " + x + "\n";
                     }
                     out.writeObject(s);
 
@@ -224,11 +236,10 @@ public class Worker extends Thread {
                     String s2 = file.get(1); // filename
                     String s3 = file.get(2);// public or private
 
-
-                    //send filename to client
+                    // send filename to client
                     out.writeObject(s2);
 
-                    //send the max buffer size 
+                    // send the max buffer size
                     out.writeObject(String.valueOf(Server.MAX_BUFFER_SIZE));
 
                     String path = "./" + s1 + "/" + s3 + "/" + s2;
@@ -236,6 +247,7 @@ public class Worker extends Thread {
 
                     sendFile(path, dataOutputStream, in);
                     String x = "File sent to client (download)";
+                    System.out.println(x);
                     out.writeObject(x);
                 }
 
@@ -362,10 +374,6 @@ public class Worker extends Thread {
             dataOutputStream.write(buffer, 0, bytes);
             dataOutputStream.flush();
         }
-
-        // sending complete, get accomplishment/failure messege
-        String serverReponse = (String) in.readObject();
-        System.out.println(serverReponse);
 
         // close the file here
         fileInputStream.close();
