@@ -255,8 +255,14 @@ public class Worker extends Thread {
                     String path = "./" + s1 + "/" + s3 + "/" + s2;
                     System.out.println(path + " what im sending");
 
-                    sendFile(path, dataOutputStream, in, s2, s1);
-                    String x = "File sent to client (download)";
+                    int succ = sendFile(path, dataOutputStream, in, s2, s1);
+                    String x;
+                    if (succ == 1) {
+                        x = "File sent to client (download)";
+                    } else {
+                        x = "Failed to download properly";
+                    }
+
                     System.out.println(x);
                     out.writeObject(x);
 
@@ -307,38 +313,63 @@ public class Worker extends Thread {
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         byte[] buffer = new byte[chunksize];
         int checkSize = 0;
-        while (size > 0
-                && (bytes = dataInputStream.read(
-                        buffer, 0,
-                        (int) Math.min(buffer.length, size))) != -1) {
-            // Here we write the file using write method
-            fileOutputStream.write(buffer, 0, bytes);
-            size -= bytes; // read upto file size
-            System.out.println("bytes: " + bytes);
+        try {
+            while (size > 0
+                    && (bytes = dataInputStream.read(
+                            buffer, 0,
+                            (int) Math.min(buffer.length, size))) != -1) {
+                // Here we write the file using write method
+                fileOutputStream.write(buffer, 0, bytes);
+                size -= bytes; // read upto file size
+                System.out.println("bytes: " + bytes);
 
-            // send acknowledgement to clinet that server got this chunk
-            String s = "Server received the chunk of size " + bytes + " bytes";
-            out.writeObject(s);
-            checkSize += bytes;
+                // send acknowledgement to clinet that server got this chunk
+                String s = "Server received the chunk of size " + bytes + " bytes";
+                out.writeObject(s);
+                checkSize += bytes;
 
-        }
-        // Here we received file
-        System.out.println("File is Received");
+            }
+            // Here we received file
+            System.out.println("File is Received");
 
-        // buffer size is restoring to the previous size
-        Server.CURR_BUFFER_SIZE -= initSize;
-        if (checkSize == initSize) {
-            String s = "successful reception of whole file of size " + initSize + " bytes";
-            out.writeObject(s);
-            logWriter.append("success\n");
-        } else {
-            String s = "Didn't get all the bytes, deleting garbage chunks";
-            out.writeObject(s);
+            // buffer size is restoring to the previous size
+            Server.CURR_BUFFER_SIZE -= initSize;
+            fileOutputStream.close();
+            if (checkSize == initSize) {
+                String s = "successful reception of whole file of size " + initSize + " bytes";
+                out.writeObject(s);
+                logWriter.append("success\n");
+            } else {
+                String s = "Didn't get all the bytes, deleting garbage chunks";
+                out.writeObject(s);
+                logWriter.append("failure\n");
+                // delete the chunks ->how?
+                boolean a = file.delete();
+                System.out.println("Didn't get all the bytes, deleting garbage chunks");
+
+                if (a) {
+                    System.out.println("Deleted successfully");
+                } else {
+                    System.out.println("Not successfully deleted");
+                }
+            }
+        } catch (Exception e) {
+            fileOutputStream.close();
+            // TODO: handle exception
+            boolean a = file.delete(); // exception came so deleting chunks
+            System.out.println("Deleting chunks, as unexpected exception came from client side");
             logWriter.append("failure\n");
-            // delete the chunks ->how?
+
+            if (a) {
+                System.out.println("Deleted successfully");
+            } else {
+                System.out.println("Not successfully deleted");
+            }
+            Server.CURR_BUFFER_SIZE -= initSize; // reducing buffer size from the size that was added
         }
+
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
-        fileOutputStream.close();
+
         logWriter.close();
     }
 
@@ -388,7 +419,7 @@ public class Worker extends Thread {
         // adding the size of the buffer again (the )
     }
 
-    public static void sendFile(String path, DataOutputStream dataOutputStream, ObjectInputStream in, String fileName,
+    public static int sendFile(String path, DataOutputStream dataOutputStream, ObjectInputStream in, String fileName,
             String userName)
             throws Exception {
         int bytes = 0;
@@ -414,16 +445,28 @@ public class Worker extends Thread {
         dataOutputStream.writeLong(file.length());
         // Here we break file into chunks
         byte[] buffer = new byte[Server.MAX_BUFFER_SIZE];
-        while ((bytes = fileInputStream.read(buffer)) != -1) {
-            // Send the file to Server Socket
-            dataOutputStream.write(buffer, 0, bytes);
-            dataOutputStream.flush();
+        try {
+            while ((bytes = fileInputStream.read(buffer)) != -1) {
+                // Send the file to Server Socket
+                dataOutputStream.write(buffer, 0, bytes);
+                dataOutputStream.flush();
+            }
+
+            logWriter.append("success\n");
+            // close the file here
+            fileInputStream.close();
+            logWriter.close();
+            return 1;
+
+        } catch (Exception e) {
+            // TODO: handle exception
+            fileInputStream.close();
+
+            logWriter.append("failure\n");
+            logWriter.close();
+            return 0;
         }
 
-        logWriter.append("success\n");
-        logWriter.close();
-        // close the file here
-        fileInputStream.close();
     }
 
 }
