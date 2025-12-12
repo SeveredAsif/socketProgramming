@@ -51,7 +51,7 @@ public class Client {
         }
         while (true) {
             System.out.println(
-                    "Menu: 1. logout; \n2. Upload a file\n3.See List of Clients\n4.Request a file\n5.Unread messeges\n6.Upload in response to a request\n7.See Downloads and Uploads\n8.Download a file");
+                    "Menu: 1. logout; \n2. Upload a file\n3.See List of Clients\n4.Request a file\n5.Unread messages\n6.Upload in response to a request\n7.See Downloads and Uploads\n8.Download a file");
             int input;
             String nextInp = myObj.nextLine();
             input = Integer.parseInt(nextInp);
@@ -177,7 +177,8 @@ public class Client {
     }
 
     // sendFile function defined here
-    private static void sendFile(String path, int chunksize, DataOutputStream dataOutputStream, ObjectInputStream in)
+    private static void sendFile(String path, int chunksize, DataOutputStream dataOutputStream, ObjectInputStream in,
+            ObjectOutputStream out)
             throws Exception {
         int bytes = 0;
         // Open the File where he located in your pc
@@ -199,7 +200,10 @@ public class Client {
             System.out.println(serverResponse);
         }
 
-        // sending complete, get accomplishment/failure messege
+        String msg = "Acknowledgement from client -> Upload completed";
+        out.writeObject(msg);
+
+        // sending complete, get accomplishment/failure messege (last chunk)
         String serverReponse = (String) in.readObject();
         System.out.println(serverReponse);
 
@@ -238,7 +242,7 @@ public class Client {
         int chunksize = Integer.parseInt(p[0]);
         System.out.println("the chunk size is " + chunksize);
         try {
-            sendFile(path, chunksize, dataOutputStream, in);
+            sendFile(path, chunksize, dataOutputStream, in, out);
         } catch (Exception e) {
             // TODO: handle exception
         }

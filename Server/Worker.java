@@ -137,7 +137,7 @@ public class Worker extends Thread {
 
                     } else {
                         Server.reqIdtoUsername.put(Server.reqID, providedUserName);
-                        for (String users : Server.userNametoSocket.keySet()) {
+                        for (String users : userMap.keySet()) {
                             ArrayList<String> msgBox = Server.messageBox.getOrDefault(users, new ArrayList<>());
                             String msg = "Req id of file:=" + String.valueOf(Server.reqID)
                                     + ", requested file description::"
@@ -231,12 +231,25 @@ public class Worker extends Thread {
                         String visibility = meta.get(2);
 
                         // only show public files
-                        if (!visibility.equalsIgnoreCase("public"))
-                            continue;
+                        if (!visibility.equalsIgnoreCase("public")) {
+                            if (!uploader.equalsIgnoreCase(providedUserName)) {
+                                continue;
+                            }
+                        }
 
                         response.append("[File ID: ").append(fileId).append("]\n");
-                        response.append("Uploader : ").append(uploader).append("\n");
-                        response.append("Filename : ").append(fileName).append("\n\n");
+                        if (uploader.equals(providedUserName)) {
+                            response.append("Uploader : ").append(uploader).append("(SELF)\n");
+                        } else {
+                            response.append("Uploader : ").append(uploader).append("\n");
+                        }
+
+                        if (visibility.equalsIgnoreCase("private")) {
+                            response.append("Filename : ").append(fileName).append("(PRIVATE)\n\n");
+                        } else {
+                            response.append("Filename : ").append(fileName).append("(PUBLIC)\n\n");
+                        }
+
                     }
                     response.append("choose a File ID, type \"No\" if you want to go back\n");
                     out.writeObject(response.toString());
@@ -255,12 +268,12 @@ public class Worker extends Thread {
                     out.writeObject(s2);
 
                     // send the max buffer size
-                    out.writeObject(String.valueOf(Server.MAX_BUFFER_SIZE));
+                    out.writeObject(String.valueOf(Server.MAX_CHUNK_SIZE));
 
                     String path = "./" + s1 + "/" + s3 + "/" + s2;
                     System.out.println(path + " what im sending");
 
-                    int succ = sendFile(path, dataOutputStream, in, s2, s1);
+                    int succ = sendFile(path, dataOutputStream, in, s2, providedUserName);
                     String x;
                     if (succ == 1) {
                         x = "File sent to client (download)";
@@ -285,7 +298,7 @@ public class Worker extends Thread {
     }
 
     public static void receiveFile(String fileName, int chunksize, String providedUserName, ObjectOutputStream out,
-            String publicOrPrivate, DataInputStream dataInputStream)
+            String publicOrPrivate, DataInputStream dataInputStream, ObjectInputStream in)
             throws Exception {
         int bytes = 0;
         String fileNewName = "./" + providedUserName + "/" + publicOrPrivate + "/" + fileName;
@@ -334,6 +347,9 @@ public class Worker extends Thread {
                 checkSize += bytes;
 
             }
+
+            String st = (String) in.readObject(); // acknowledgement from client -> upload done
+            System.out.println(st);
             // Here we received file
             System.out.println("File is Received");
 
@@ -420,7 +436,7 @@ public class Worker extends Thread {
         Server.fileId++;
         serverResponse = String.valueOf(chunksize) + "," + fileId;
         out.writeObject(serverResponse);
-        receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate, dataInputStream);
+        receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate, dataInputStream, in);
         // adding the size of the buffer again (the )
     }
 
@@ -449,7 +465,7 @@ public class Worker extends Thread {
         // Here we send the File to Server
         dataOutputStream.writeLong(file.length());
         // Here we break file into chunks
-        byte[] buffer = new byte[Server.MAX_BUFFER_SIZE];
+        byte[] buffer = new byte[Server.MAX_CHUNK_SIZE];
         try {
             while ((bytes = fileInputStream.read(buffer)) != -1) {
                 // Send the file to Server Socket
