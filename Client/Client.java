@@ -51,7 +51,7 @@ public class Client {
         }
         while (true) {
             System.out.println(
-                    "Menu: 1. logout; \n2.Request a file \n3. Upload a file\n4.See List of Clients\n5.Request a file\n6.Unread messeges\n7.Upload in response to a request\n8.See Downloads and Uploads\n9.Download a file");
+                    "Menu: 1. logout; \n2. Upload a file\n3.See List of Clients\n4.Request a file\n5.Unread messeges\n6.Upload in response to a request\n7.See Downloads and Uploads\n8.Download a file");
             int input;
             String nextInp = myObj.nextLine();
             input = Integer.parseInt(nextInp);
@@ -61,10 +61,6 @@ public class Client {
                 break;
             }
             if (input == 2) {
-                msg = "req";
-                out.writeObject(msg);
-            }
-            if (input == 3) {
 
                 System.out.println("1.Public Upload\n2.Private Upload");
                 msg = myObj.nextLine();
@@ -81,12 +77,12 @@ public class Client {
                 }
 
             }
-            if (input == 4) {
+            if (input == 3) {
                 msg = "list of clients";
                 out.writeObject(msg);
                 System.out.println(in.readObject());
             }
-            if (input == 5) {
+            if (input == 4) {
                 msg = "request file";
                 out.writeObject(msg);
                 System.out.println("Provide file_description,recipient(individual or ALL)");
@@ -103,13 +99,13 @@ public class Client {
                 System.out.println(msg);
 
             }
-            if (input == 6) {
+            if (input == 5) {
                 msg = "read msgbox";
                 out.writeObject(msg);
                 msg = (String) in.readObject();
                 System.out.println(msg);
             }
-            if (input == 7) {
+            if (input == 6) {
                 msg = "upload in response to request";
                 System.out.println(msg);
                 out.writeObject(msg);
@@ -126,13 +122,13 @@ public class Client {
                 }
                 out.writeObject(reqId);
             }
-            if (input == 8) {
+            if (input == 7) {
                 msg = "see downloads and uploads";
                 out.writeObject(msg);
                 msg = (String) in.readObject();
                 System.out.println(msg);
             }
-            if (input == 9) {
+            if (input == 8) {
                 msg = "download file";
                 out.writeObject(msg);
 

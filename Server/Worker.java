@@ -104,7 +104,12 @@ public class Worker extends Thread {
                     // System.out.println(userMap.keySet());
                     String clients = "";
                     for (String entry : userMap.keySet()) {
-                        clients += ("," + entry);
+                        if (userMap.get(entry) == 1) {
+                            clients += ("," + entry + "(Online)");
+                        } else {
+                            clients += ("," + entry + "(Offline)");
+                        }
+
                     }
                     clients = clients.substring(1, clients.length());
                     out.writeObject(clients);
