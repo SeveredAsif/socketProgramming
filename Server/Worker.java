@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.ArrayList;
 
 public class Worker extends Thread {
@@ -21,6 +23,7 @@ public class Worker extends Thread {
     HashMap<String, Integer> userMap;
     DataInputStream dataInputStream;
     DataOutputStream dataOutputStream;
+    HashMap<Integer, Integer> unReadMap;
 
     // private static DataOutputStream dataOutputStream = null;
     // private static DataInputStream dataInputStream = null;
@@ -28,6 +31,7 @@ public class Worker extends Thread {
     public Worker(Socket socket, HashMap<String, Integer> userMap) {
         this.socket = socket;
         this.userMap = userMap;
+        this.unReadMap = new HashMap<>();
         try {
             dataInputStream = new DataInputStream(
                     this.socket.getInputStream());
@@ -130,6 +134,8 @@ public class Worker extends Thread {
                         ArrayList<String> msgBox = Server.messageBox.getOrDefault(p[1], new ArrayList<>());
                         String msg = String.valueOf(Server.reqID) + "," + p[0];
                         msgBox.add(msg);
+                        int len = msgBox.size();
+                        unReadMap.put(len - 1, 0);
 
                         Server.messageBox.put(p[1], msgBox);
                         // System.out.println(Server.messageBox.get(p[1]));
@@ -144,6 +150,8 @@ public class Worker extends Thread {
                                     + p[0];
                             msgBox.add(msg);
 
+                            int len = msgBox.size();
+                            unReadMap.put(len - 1, 0);
                             Server.messageBox.put(users, msgBox);
                         }
                         Server.reqID++;
@@ -154,8 +162,16 @@ public class Worker extends Thread {
                 } else if (continuousListen.equalsIgnoreCase("read msgbox")) {
                     s = "Messages:\n ";
                     ArrayList<String> inbox = Server.messageBox.getOrDefault(providedUserName, new ArrayList<>());
+                    int cnt = 0;
                     for (String x : inbox) {
-                        s += "Msg: " + x + "\n";
+                        if (unReadMap.getOrDefault(cnt, 0) == 0) {
+                            s += "Msg: " + x + " (Unread)\n";
+                            unReadMap.put(cnt, 1);
+                        } else {
+                            s += "Msg: " + x + " (Read)\n";
+                        }
+                        cnt++;
+
                     }
                     out.writeObject(s);
                 } else if (continuousListen.equalsIgnoreCase("upload in response to request")) {
@@ -185,36 +201,72 @@ public class Worker extends Thread {
                             + providedUserName;
                     msgBox.add(msg);
 
+                    int len = msgBox.size();
+                    unReadMap.put(len - 1, 0);
                     Server.messageBox.put(requesterName, msgBox);
 
                 } else if (continuousListen.equalsIgnoreCase("see downloads and uploads")) {
+                    File myObj = new File("./" + providedUserName + "/logs.txt");
+                    String serverResponse = "1.Show Uploads\n2.Show Downloads";
+                    ArrayList<String> uploads = new ArrayList<>();
+                    ArrayList<String> downloaded = new ArrayList<>();
 
-                    String publicDirName = "./" + providedUserName + "/public";
-                    String privateDirName = "./" + providedUserName + "/private";
-                    File dir = new File(publicDirName);
-                    File[] dir_contents = dir.listFiles();
-
-                    String publicFiles = "public:\n";
-                    if (dir_contents != null) {
-                        for (int i = 0; i < dir_contents.length; i++) {
-                            publicFiles += dir_contents[i].getName() + "\n";
+                    try (Scanner myReader = new Scanner(myObj)) {
+                        while (myReader.hasNextLine()) {
+                            String data = myReader.nextLine();
+                            String p[] = data.split(",");
+                            if (p[0].equalsIgnoreCase("upload")) {
+                                uploads.add(data);
+                            } else {
+                                downloaded.add(data);
+                            }
+                            // serverResponse += data;
+                            System.out.println(data);
                         }
+                    } catch (FileNotFoundException e) {
+                        System.out.println("An error occurred.");
+                        e.printStackTrace();
                     }
 
-                    dir = new File(privateDirName);
-                    dir_contents = dir.listFiles();
+                    // String publicDirName = "./" + providedUserName + "/public";
+                    // String privateDirName = "./" + providedUserName + "/private";
+                    // File dir = new File(publicDirName);
+                    // File[] dir_contents = dir.listFiles();
 
-                    String privateFiles = "private:\n";
-                    if (dir_contents != null) {
-                        for (int i = 0; i < dir_contents.length; i++) {
-                            privateFiles += dir_contents[i].getName() + "\n";
-                        }
-                    }
+                    // String publicFiles = "public:\n";
+                    // if (dir_contents != null) {
+                    // for (int i = 0; i < dir_contents.length; i++) {
+                    // publicFiles += dir_contents[i].getName() + "\n";
+                    // }
+                    // }
 
-                    String serverResponse = "uploads:\n" + publicFiles + privateFiles;
-                    serverResponse += "downloads:\n";
-                    for (String d : downloads) {
-                        serverResponse += d;
+                    // dir = new File(privateDirName);
+                    // dir_contents = dir.listFiles();
+
+                    // String privateFiles = "private:\n";
+                    // if (dir_contents != null) {
+                    // for (int i = 0; i < dir_contents.length; i++) {
+                    // privateFiles += dir_contents[i].getName() + "\n";
+                    // }
+                    // }
+
+                    // String serverResponse = "uploads:\n" + publicFiles + privateFiles;
+                    // serverResponse += "downloads:\n";
+                    // for (String d : downloads) {
+                    // serverResponse += d;
+                    // }
+                    out.writeObject(serverResponse);
+
+                    // client will now say whether downloads or uploads is what he wants to see
+
+                    String msg = (String) in.readObject();
+                    int choice = Integer.parseInt(msg);
+                    serverResponse = "";
+
+                    if (choice == 1) {
+                        serverResponse = formatLogEntries(uploads, "UPLOADS");
+                    } else {
+                        serverResponse = formatLogEntries(downloaded, "DOWNLOADS");
                     }
                     out.writeObject(serverResponse);
                 } else if (continuousListen.equalsIgnoreCase("download file")) {
@@ -413,13 +465,15 @@ public class Worker extends Thread {
             System.out.println(part + " : in server");
         }
 
-        while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) > Server.MAX_BUFFER_SIZE) {
-            serverResponse = "wrong choice! Cannot upload this file due to its size right now. Provide another file_name";
-            out.writeObject(serverResponse);
-            System.out.println("Buffer Size exceeded! Cannot upload file to server");
-            clientResponse = (String) in.readObject();
-            p = clientResponse.split(",");
-        }
+        // while (Server.CURR_BUFFER_SIZE + Integer.parseInt(p[1]) >
+        // Server.MAX_BUFFER_SIZE) {
+        // serverResponse = "wrong choice! Cannot upload this file due to its size right
+        // now. Provide another file_name";
+        // out.writeObject(serverResponse);
+        // System.out.println("Buffer Size exceeded! Cannot upload file to server");
+        // clientResponse = (String) in.readObject();
+        // p = clientResponse.split(",");
+        // }
 
         Random r = new Random();
         int chunksize = r.nextInt(Server.MAX_CHUNK_SIZE - Server.MIN_CHUNK_SIZE + 1)
@@ -488,6 +542,32 @@ public class Worker extends Thread {
             return 0;
         }
 
+    }
+
+    private static String formatLogEntries(ArrayList<String> logEntries, String type) {
+        if (logEntries.isEmpty()) {
+            return "No " + type.toLowerCase() + " found.\n";
+        }
+
+        StringBuilder formatted = new StringBuilder();
+        formatted.append("=== ").append(type).append(" ===\n\n");
+        int count = 1;
+
+        for (String entry : logEntries) {
+            String[] parts = entry.split(",");
+            if (parts.length >= 4) {
+                String fileName = parts[1].replace("./", "");
+                String dateTime = parts[2].replace("T", " ").substring(0, 19);
+                String status = parts[3].equalsIgnoreCase("success") ? "✓ Success" : "✗ Failed";
+
+                formatted.append(String.format("[%d] %s\n", count, fileName));
+                formatted.append(String.format("    Date/Time: %s\n", dateTime));
+                formatted.append(String.format("    Status: %s\n\n", status));
+                count++;
+            }
+        }
+
+        return formatted.toString();
     }
 
 }

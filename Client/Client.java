@@ -127,6 +127,14 @@ public class Client {
                 out.writeObject(msg);
                 msg = (String) in.readObject();
                 System.out.println(msg);
+
+                // give choice -> DOWNLOADS or uploads
+                msg = myObj.nextLine();
+                out.writeObject(msg);
+
+                // recieve the uploads/downloads logs
+                msg = (String) in.readObject();
+                System.out.println(msg);
             }
             if (input == 8) {
                 msg = "download file";
