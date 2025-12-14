@@ -16,11 +16,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 
 public class Worker extends Thread {
     Socket socket;
-    HashMap<String, Integer> userMap;
+    ConcurrentHashMap<String, Integer> userMap;
     DataInputStream dataInputStream;
     DataOutputStream dataOutputStream;
     HashMap<Integer, Integer> unReadMap;
@@ -28,7 +29,7 @@ public class Worker extends Thread {
     // private static DataOutputStream dataOutputStream = null;
     // private static DataInputStream dataInputStream = null;
 
-    public Worker(Socket socket, HashMap<String, Integer> userMap) {
+    public Worker(Socket socket, ConcurrentHashMap<String, Integer> userMap) {
         this.socket = socket;
         this.userMap = userMap;
         this.unReadMap = new HashMap<>();
@@ -139,8 +140,7 @@ public class Worker extends Thread {
 
                         Server.messageBox.put(p[1], msgBox);
                         // System.out.println(Server.messageBox.get(p[1]));
-                        Server.reqID++;
-
+                        increaseReqId();
                     } else {
                         Server.reqIdtoUsername.put(Server.reqID, providedUserName);
                         for (String users : userMap.keySet()) {
@@ -154,7 +154,7 @@ public class Worker extends Thread {
                             unReadMap.put(len - 1, 0);
                             Server.messageBox.put(users, msgBox);
                         }
-                        Server.reqID++;
+                        increaseReqId();
                     }
                     s = "request done!";
                     out.writeObject(s);
@@ -196,7 +196,7 @@ public class Worker extends Thread {
                     // reqId to socket map, send msg
                     String requesterName = Server.reqIdtoUsername.get(reqId);
                     ArrayList<String> msgBox = Server.messageBox.getOrDefault(requesterName, new ArrayList<>());
-                    String msg = String.valueOf(Server.reqID)
+                    String msg = String.valueOf(reqId)
                             + " -> File with this request id (that you requested) has been uploaded by user "
                             + providedUserName;
                     msgBox.add(msg);
@@ -349,6 +349,18 @@ public class Worker extends Thread {
         }
     }
 
+    public static synchronized void increaseReqId() {
+        Server.reqID++;
+    }
+
+    public static synchronized void incrementFileId() {
+        Server.fileId++;
+    }
+
+    public static synchronized void addToBufferSize(long size) {
+        Server.CURR_BUFFER_SIZE += size;
+    }
+
     public static void receiveFile(String fileName, int chunksize, String providedUserName, ObjectOutputStream out,
             String publicOrPrivate, DataInputStream dataInputStream, ObjectInputStream in)
             throws Exception {
@@ -378,7 +390,7 @@ public class Worker extends Thread {
         System.out.println("file size: " + size);
 
         // reducing the size of the buffer
-        Server.CURR_BUFFER_SIZE += size;
+        addToBufferSize(size);
         long initSize = size;
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
         byte[] buffer = new byte[chunksize];
@@ -406,7 +418,7 @@ public class Worker extends Thread {
             System.out.println("File is Received");
 
             // buffer size is restoring to the previous size
-            Server.CURR_BUFFER_SIZE -= initSize;
+            addToBufferSize(-1 * initSize);
             fileOutputStream.close();
             if (checkSize == initSize) {
                 String s = "successful reception of whole file of size " + initSize + " bytes";
@@ -438,7 +450,7 @@ public class Worker extends Thread {
             } else {
                 System.out.println("Not successfully deleted");
             }
-            Server.CURR_BUFFER_SIZE -= initSize; // reducing buffer size from the size that was added
+            addToBufferSize(-1 * initSize); // reducing buffer size from the size that was added
         }
 
         System.out.println("Server Current Buffer Size: " + Server.CURR_BUFFER_SIZE);
@@ -486,8 +498,7 @@ public class Worker extends Thread {
         al.add(p[0]); // p[0] is filename
         al.add(publicOrPrivate);
         Server.fileIdtoFileNameAndUploader.put(Server.fileId, al);
-
-        Server.fileId++;
+        incrementFileId();
         serverResponse = String.valueOf(chunksize) + "," + fileId;
         out.writeObject(serverResponse);
         receiveFile(p[0], chunksize, providedUserName, out, publicOrPrivate, dataInputStream, in);

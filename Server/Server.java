@@ -4,7 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
+//import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 
 public class Server {
@@ -13,20 +14,20 @@ public class Server {
     static int MIN_CHUNK_SIZE = 1024;
     static int MAX_CHUNK_SIZE = 4096;
     static int CURR_BUFFER_SIZE = 0;
-    static HashMap<String, Socket> userNametoSocket;
+    static ConcurrentHashMap<String, Socket> userNametoSocket;
     static int reqID = 0;
-    static HashMap<String, ArrayList<String>> messageBox;
-    static HashMap<Integer, String> reqIdtoUsername;
+    static ConcurrentHashMap<String, ArrayList<String>> messageBox;
+    static ConcurrentHashMap<Integer, String> reqIdtoUsername;
     static int fileId = 0;
-    static HashMap<Integer, ArrayList<String>> fileIdtoFileNameAndUploader;
+    static ConcurrentHashMap<Integer, ArrayList<String>> fileIdtoFileNameAndUploader;
 
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket welcomeSocket = new ServerSocket(6666);
-        HashMap<String, Integer> userMap = new HashMap<>();
-        userNametoSocket = new HashMap<>();
-        messageBox = new HashMap<>();
-        reqIdtoUsername = new HashMap<>();
-        fileIdtoFileNameAndUploader = new HashMap<>();
+        ConcurrentHashMap<String, Integer> userMap = new ConcurrentHashMap<>();
+        userNametoSocket = new ConcurrentHashMap<>();
+        messageBox = new ConcurrentHashMap<>();
+        reqIdtoUsername = new ConcurrentHashMap<>();
+        fileIdtoFileNameAndUploader = new ConcurrentHashMap<>();
         loadExistingFiles(fileIdtoFileNameAndUploader);
 
         while (true) {
@@ -45,7 +46,7 @@ public class Server {
 
     }
 
-    public static void loadExistingFiles(HashMap<Integer, ArrayList<String>> fileIdtoFileNameAndUploader) {
+    public static void loadExistingFiles(ConcurrentHashMap<Integer, ArrayList<String>> fileIdtoFileNameAndUploader) {
         File dir = new File("./");
         String username = "";
         int fileid = 0;
